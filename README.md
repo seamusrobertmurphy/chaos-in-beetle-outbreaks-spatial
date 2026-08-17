@@ -1,0 +1,1 @@
+# chaos-in-beetle-outbreaks-spatial
