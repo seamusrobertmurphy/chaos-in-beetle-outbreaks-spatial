@@ -11,14 +11,26 @@
 # Figures are referenced as committed PNGs under 03.outputs/figures rather than
 # embedded, so the README stays small.
 #
-# Centring and width, tested against `gh api /markdown` in gfm mode rather than
-# assumed. A `<div align="center">` wrapper survives the sanitizer and centres a
-# pipe table. A `<p align="center">` wrapper with `<img width="100%">` survives
-# and GitHub adds `max-width: 100%` itself, so figures centre and fill the
-# column. Table width cannot be set: `style` attributes are stripped, and a
-# `width` attribute on `<table>` survives but changes nothing because GitHub
-# sizes README tables to their content. Tables are therefore centred, not
-# widened, and no width attribute is emitted that would imply otherwise.
+# Centring and width, tested against `gh api /markdown` in gfm mode and measured
+# against GitHub's live stylesheet, rather than assumed.
+#
+# GitHub styles README tables with `.markdown-body table{width:max-content;
+# max-width:100%;display:block;overflow:auto}`. A `width` attribute on <table>
+# is a presentational hint and loses to that author rule, so it does nothing;
+# percentage widths on cells fail too, resolving against an indefinite width.
+# Oversized PIXEL hints on the header cells work with max-content instead of
+# against it: they inflate the table's intrinsic width past any viewport and
+# max-width:100% clamps it back to exactly the container. The hints are soft, so
+# the table shrinks to fit and never scrolls.
+#
+# Measured at container widths 600, 800 and 1012 px: a plain pipe table stayed at
+# 187.1 px at every width; the same table with <th width="2000"> measured 600,
+# 800 and 1012 px exactly, no overflow.
+#
+# The cost is that a full-width table cannot be a GFM pipe table; it must be raw
+# HTML. That is a deliberate departure from the pipe-table rule, taken because
+# the alternative is a table sized to its content. Figures use
+# <p align="center"> with <img width="100%">; GitHub adds max-width itself.
 #
 # Usage: Rscript 05.scripts/04-build-readme.R
 
@@ -48,6 +60,27 @@ gfm <- function(df) {
   rows <- vapply(seq_len(nrow(df)), function(i)
     paste0("| ", paste(vapply(df[i, ], cell, ""), collapse = " | "), " |"), "")
   paste(c(hdr, sep, rows), collapse = "\n")
+}
+
+# Emit a data frame as a full-width HTML table. The pixel hint on each header
+# cell is what fills the column; see the note at the top of this file. HTML is
+# escaped because these cells carry arbitrary caption and data text.
+esc <- function(v) {
+  x <- squash(as.character(v))
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;", x, fixed = TRUE)
+  x <- gsub(">", "&gt;", x, fixed = TRUE)
+  gsub("\"", "&quot;", x, fixed = TRUE)
+}
+wide_table <- function(df, hint = 2000) {
+  th <- paste0(sprintf("<th width=\"%d\">%s</th>", hint,
+                       vapply(names(df), esc, "")), collapse = "")
+  tr <- vapply(seq_len(nrow(df)), function(i)
+    paste0("<tr>", paste0(sprintf("<td>%s</td>",
+                                  vapply(df[i, ], esc, "")), collapse = ""),
+           "</tr>"), "")
+  paste0("<table width=\"100%\">\n<thead><tr>", th, "</tr></thead>\n<tbody>\n",
+         paste(tr, collapse = "\n"), "\n</tbody>\n</table>")
 }
 
 title <- squash(html_text(html_element(doc, "h1.title")))
@@ -84,9 +117,7 @@ blocks <- lapply(floats, function(el) {
     df <- as.data.frame(df, check.names = FALSE)
     names(df) <- ifelse(names(df) == "" | is.na(names(df)),
                         paste0("V", seq_along(df)), names(df))
-    # A blank line each side of the wrapper is required, or GitHub treats the
-    # pipe table as raw text inside the HTML block and prints it verbatim.
-    body <- paste0("<div align=\"center\">\n\n", gfm(df), "\n\n</div>")
+    body <- wide_table(df)
   }
   paste0("## ", heading, "\n\n", head_txt, "\n\n", body, "\n")
 })
