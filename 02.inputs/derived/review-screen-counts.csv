@@ -1,0 +1,14 @@
+stage,count
+raw records retrieved,15892
+unique after deduplication,13090
+duplicates removed,2802
+mechanical screen: pass,5990
+mechanical screen: no-spread,3406
+mechanical screen: off-topic,3011
+mechanical screen: not-ecology,318
+mechanical screen: out-of-window,181
+mechanical screen: not-research,158
+mechanical screen: not-english,26
+passed to reading screen,5990
+"passed but title only, no abstract",695
+records in both strands,2088

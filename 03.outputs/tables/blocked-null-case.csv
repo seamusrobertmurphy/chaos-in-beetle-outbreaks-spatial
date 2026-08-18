@@ -1,0 +1,4 @@
+"block_km","reps","frac_positive_slope","median_absurd_speed","frac_wave_declared_blocked"
+50,25,0.4,1859.45721516466,0.08
+100,25,0.56,4279.80464616768,0.04
+200,25,0.52,2364.30874906815,0

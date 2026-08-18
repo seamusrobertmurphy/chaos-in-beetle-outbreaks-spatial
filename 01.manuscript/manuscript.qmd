@@ -147,8 +147,13 @@ Pending.
 
 ## Data
 
-Pending. Landsat Collection 2 Level-2, tier and footprint named in the framing document,
-with the survey polygon archive as the reference tier.
+Pending in full until the pre-registration is frozen. What is settled: the observation tier is Landsat Collection 2 Level-2 surface reflectance, Tier 1, from Landsat 5 TM, 8 OLI and 9 OLI-2. Landsat 7 is excluded because its scan line corrector failed on 31 May 2003 and 22 percent of every subsequent image is lost.
+
+**That exclusion has one consequence which the archive itself confirms rather than the mission dates alone.** Landsat 5 ceased normal acquisition in November 2011 and Landsat 8 reached operational orbit on 10 April 2013. Counting growing-season scenes over British Columbia in the Earth Engine catalogue returns, for 2012, 611 Landsat 7 scenes and none from any other mission (@tbl-availability). **With Landsat 7 excluded, 2012 has no coverage at all.** The year is flagged in every product rather than interpolated silently, and any harmonic fit reports its sensitivity to that gap.
+
+Landsat 3 is not a candidate. Its Multispectral Scanner carried green, red and two near-infrared bands at 80 m, with no shortwave infrared and a thermal band that failed shortly after launch, so it is not a coarser version of the same measurement but a different one.
+
+The provincial aerial overview survey polygon archive is the reference tier, and the relationship between the two is that Landsat is shorter, at 1984 onward against the survey's 1961, and finer, at 30 m against sketch-mapped polygons digitised to about 100 m.
 
 ## Analysis window
 
@@ -173,6 +178,30 @@ travelling wave of known speed and direction, which the estimator must recover, 
 synthetic simultaneous eruption, which the estimator must not report as a wave.
 
 # Results
+
+## Landsat coverage
+
+```{r}
+#| label: tbl-availability
+#| echo: true
+#| tbl-cap: "Landsat growing-season scene counts over British Columbia by mission and year, from the Earth Engine catalogue. Selected years shown. Landsat 7 is excluded from the analysis for its scan line corrector failure, and the 2012 row shows the consequence: no other mission acquired that year."
+avail <- grab("landsat-availability.csv")
+if (is.null(avail)) {
+  avail <- data.frame(Year = "pending", `L5 TM` = "pending", `L7 ETM+` = "pending",
+                      `L8 OLI` = "pending", `L9 OLI-2` = "pending", check.names = FALSE)
+} else {
+  keep <- c(1984, 1990, 2000, 2005, 2010, 2011, 2012, 2013, 2015, 2020, 2024)
+  a <- avail[avail$year %in% keep, ]
+  avail <- stats::reshape(a, idvar = "year", timevar = "mission",
+                          direction = "wide")
+  names(avail) <- sub("^scenes\\.", "", names(avail))
+  names(avail)[1] <- "Year"
+  # Year is a label, not a quantity: as an integer the house formatter gives it
+  # a thousands separator and prints 1,984.
+  avail$Year <- as.character(avail$Year)
+}
+fmt_tbl(avail)
+```
 
 ## Pipeline test
 
@@ -282,6 +311,62 @@ licence is read from its source on the retrieval date and recorded in the input 
 before it is stated here.
 
 # Analysis pipeline
+
+Every chunk in this section is guarded on its own output, so a render executes none of them, and each is wrapped in `local()` so a pipeline object cannot replace one the document is using. Every chunk carries an explicit `#| echo: true`: the code is shown, never hidden. Chunks are labelled `pipe-*` and written out to `05.scripts/` by the `pipe-purl` chunk below, so the long Earth Engine jobs run from a terminal without rendering the document.
+
+**Earth Engine chunks never run at render.** An export is an asynchronous batch task that can take hours, so the `pipe-ee-*` chunks submit work and poll; they are run once from a terminal and their products land in `02.inputs/derived/`.
+
+```{r}
+#| label: pipe-ee-init
+#| echo: true
+#| output: false
+# Earth Engine session. rgee wraps the Python earthengine-api through
+# reticulate, so the interpreter is pinned explicitly: this machine carries
+# ee under both python3 (3.12) and python (3.14) and the project convention
+# is 3.12. Credentials already exist under ~/.config/earthengine; what
+# ee.Initialize() requires in addition is a registered Cloud project, and
+# omitting it produces the misleading error "Not signed up for Earth Engine".
+local({
+  Sys.setenv(RETICULATE_PYTHON = "/opt/local/bin/python3")
+  suppressMessages(library(reticulate))
+  ee <- reticulate::import("ee")
+  ee$Initialize(project = "murphys-deforisk")
+  assign("ee", ee, envir = .GlobalEnv)
+  invisible(NULL)
+})
+```
+
+```{r}
+#| label: pipe-ee-availability
+#| echo: true
+#| output: false
+# Scene counts per mission and year over British Columbia, growing season.
+# This is metadata about the archive, not an outcome, and it is what
+# establishes the coverage the design must work within. It is the evidence
+# for the 2012 gap: with Landsat 7 excluded that year has no scenes at all.
+local({
+  root <- if (file.exists("01.manuscript")) normalizePath(".") else normalizePath("..")
+  # A table the manuscript cites, so it belongs in 03.outputs/tables where
+  # grab() reads, not in 02.inputs/derived which holds intermediate data.
+  out <- file.path(root, "03.outputs", "tables", "landsat-availability.csv")
+  if (file.exists(out)) return(invisible(NULL))
+  bc <- ee$Geometry$Rectangle(c(-139.1, 48.2, -114.0, 60.0), "EPSG:4326", FALSE)
+  cols <- c(`L5 TM` = "LANDSAT/LT05/C02/T1_L2", `L7 ETM+` = "LANDSAT/LE07/C02/T1_L2",
+            `L8 OLI` = "LANDSAT/LC08/C02/T1_L2", `L9 OLI-2` = "LANDSAT/LC09/C02/T1_L2")
+  rows <- list()
+  for (y in 1984:2025) {
+    for (nm in names(cols)) {
+      n <- tryCatch(
+        ee$ImageCollection(cols[[nm]])$filterBounds(bc)$
+          filterDate(sprintf("%d-06-15", y), sprintf("%d-09-15", y))$size()$getInfo(),
+        error = function(e) NA_integer_)
+      rows[[length(rows) + 1]] <- data.frame(year = y, mission = nm, scenes = n)
+    }
+    utils::write.csv(do.call(rbind, rows), out, row.names = FALSE)
+  }
+})
+```
+
 
 Empty. Every chunk in this section is guarded on its own output, so a render executes none
 of them, and each is wrapped in `local()` so that a pipeline object cannot replace one the
