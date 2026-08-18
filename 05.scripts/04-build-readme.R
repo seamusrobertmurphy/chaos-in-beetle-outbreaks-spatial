@@ -11,6 +11,15 @@
 # Figures are referenced as committed PNGs under 03.outputs/figures rather than
 # embedded, so the README stays small.
 #
+# Centring and width, tested against `gh api /markdown` in gfm mode rather than
+# assumed. A `<div align="center">` wrapper survives the sanitizer and centres a
+# pipe table. A `<p align="center">` wrapper with `<img width="100%">` survives
+# and GitHub adds `max-width: 100%` itself, so figures centre and fill the
+# column. Table width cannot be set: `style` attributes are stripped, and a
+# `width` attribute on `<table>` survives but changes nothing because GitHub
+# sizes README tables to their content. Tables are therefore centred, not
+# widened, and no width attribute is emitted that would imply otherwise.
+#
 # Usage: Rscript 05.scripts/04-build-readme.R
 
 suppressMessages({
@@ -65,7 +74,9 @@ blocks <- lapply(floats, function(el) {
     img <- html_element(el, "img")
     # The rendered document embeds the figure; the README points at the
     # committed file of the same name instead.
-    body <- sprintf("![%s](03.outputs/figures/%s-1.png)", head_txt, id)
+    body <- sprintf(
+      "<p align=\"center\"><img src=\"03.outputs/figures/%s-1.png\" alt=\"%s\" width=\"100%%\"></p>",
+      id, gsub('"', "&quot;", head_txt, fixed = TRUE))
   } else {
     tb <- html_element(el, "table")
     if (inherits(tb, "xml_missing")) return(NULL)
@@ -73,7 +84,9 @@ blocks <- lapply(floats, function(el) {
     df <- as.data.frame(df, check.names = FALSE)
     names(df) <- ifelse(names(df) == "" | is.na(names(df)),
                         paste0("V", seq_along(df)), names(df))
-    body <- gfm(df)
+    # A blank line each side of the wrapper is required, or GitHub treats the
+    # pipe table as raw text inside the HTML block and prints it verbatim.
+    body <- paste0("<div align=\"center\">\n\n", gfm(df), "\n\n</div>")
   }
   paste0("## ", heading, "\n\n", head_txt, "\n\n", body, "\n")
 })
