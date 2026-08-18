@@ -1,0 +1,325 @@
+---
+title: "PROVISIONAL. Spatial spread of a bark beetle outbreak in British Columbia"
+subtitle: "PLACEHOLDER TITLE. Not chosen by Seamus. Titles and headings are fixed once he chooses them; nothing here binds."
+date: today
+author:
+  - name: Seamus Murphy
+    orcid: 0000-0002-1792-0351
+abstract: >
+  Pending. The framing gate is open and blocking; no abstract is written until the
+  question is approved, the prior-work survey has run, the analysis is designed and the
+  pre-registration is frozen. This shell exists so that the manuscript's structure,
+  formatting apparatus and pre-registered table shells are in place before any outcome
+  is computed, exactly as in Study 1.
+keywords:
+  - bark beetle outbreaks
+  - spatial spread
+  - travelling wave
+  - spatial synchrony
+  - British Columbia
+format:
+  docx:
+    prefer-html: true
+    reference-doc: ../04.references/style-formal.docx
+    highlight-style: pygments
+  html:
+    toc: true
+    number-sections: false
+    embed-resources: true
+    code-fold: false
+    df-print: kable
+execute:
+  eval: true
+  echo: true
+  warning: false
+  message: false
+  error: true
+  comment: NA
+engine: knitr
+citeproc: true
+editor: visual
+bibliography: ../04.references/references.bib
+csl: ../04.references/apa.csl
+---
+
+```{r}
+#| label: setup
+#| echo: true
+#| output: false
+library(sf)
+library(terra)
+library(flextable)
+
+root <- normalizePath("..")
+inputs <- file.path(root, "02.inputs")
+outputs <- file.path(root, "03.outputs")
+derived <- file.path(inputs, "derived")
+tables <- file.path(outputs, "tables")
+
+BC_ALBERS <- 3005
+
+# Figures are written to 03.outputs/figures as well as embedded, so the README
+# and any submission package reference committed files rather than extracting
+# images from a rendered document.
+#
+# The path must be relative to this document. Pandoc resolves an image src
+# against the document's directory, so an absolute path arrives as
+# "./Volumes/..." which resolves to nothing, and embed-resources then drops
+# every figure without failing the render.
+knitr::opts_chunk$set(fig.path = "../03.outputs/figures/",
+                      dpi = 300, dev = "png")
+
+# House table format: 9 pt, centred headers, numeric right and text left,
+# single line spacing, autofit to full width.
+fmt_tbl <- function(df, right = NULL) {
+  right_cols <- union(names(df)[vapply(df, is.numeric, TRUE)], right)
+  left_cols <- setdiff(names(df), right_cols)
+  ft <- flextable::flextable(df)
+  ft <- flextable::fontsize(ft, size = 9, part = "all")
+  ft <- flextable::align(ft, align = "center", part = "header")
+  if (length(right_cols))
+    ft <- flextable::align(ft, j = right_cols, align = "right", part = "body")
+  if (length(left_cols))
+    ft <- flextable::align(ft, j = left_cols, align = "left", part = "body")
+  ft <- flextable::line_spacing(ft, space = 1, part = "all")
+  ft <- flextable::padding(ft, padding.top = 1, padding.bottom = 1, part = "all")
+  flextable::set_table_properties(ft, layout = "autofit", width = 1)
+}
+
+# Every number in the prose is read from a saved table at render time. A table
+# that does not exist yet reads "pending" rather than failing the render or,
+# worse, silently carrying a number from a previous run.
+grab <- function(file) {
+  p <- file.path(tables, file)
+  if (file.exists(p))
+    utils::read.csv(p, stringsAsFactors = FALSE, check.names = FALSE)
+  else NULL
+}
+val <- function(df, row_col, row_val, col, digits = 3) {
+  if (is.null(df)) return("pending")
+  i <- which(df[[row_col]] == row_val)
+  if (!length(i)) return("pending")
+  v <- df[[col]][i[1]]
+  if (is.numeric(v)) formatC(v, format = "f", digits = digits) else as.character(v)
+}
+num <- function(x, digits = 3) if (is.null(x) || is.na(x)) "pending" else
+  formatC(x, format = "f", digits = digits)
+
+# Outcome tables. All NULL until the pre-registration is frozen and the
+# pipeline has run; every shell below therefore reads "pending".
+front_summ <- grab("front-summary.csv")
+epi_tbl    <- grab("epicentres.csv")
+geom_tbl   <- grab("patch-geometry.csv")
+acorr_tbl  <- grab("spatial-autocorrelation.csv")
+hyp_tests  <- grab("hypothesis-tests.csv")
+ptest      <- grab("pipeline-test.csv")
+```
+
+# Introduction
+
+Pending. Written after the framing gate is approved and the prior-work survey has run.
+The introduction positions the study against the travelling-wave literature that
+@Aukema_2006 opened for this outbreak, and against the scenario models of
+@Perevaryukha_2016 and @Perevaryukha_2019, which do not follow it. Its motivating
+observation is Study 1's resolution finding: 65 annual observations resolve only two cycle
+lengths at the outbreak scale, an independent estimator resolves none, and the archive is
+therefore better suited to asking where an outbreak went than how often it returns. The
+spatial questions here require no cycle to be resolved.
+
+## Hypotheses
+
+Pending, from the approved framing document. Stated here in the manuscript before any
+outcome is computed, as in Study 1.
+
+# Materials and methods
+
+A note on procedure. Pending: this paragraph records which gates were run and which, if
+any, were waived, with the compensating discipline stated. Study 1 ran under a waiver of
+the survey and design gates; this study does not inherit that waiver.
+
+## Study system
+
+Pending.
+
+## Study area
+
+Pending.
+
+## Data
+
+Pending. Landsat Collection 2 Level-2, tier and footprint named in the framing document,
+with the survey polygon archive as the reference tier.
+
+## Analysis window
+
+Pending.
+
+## Front estimation
+
+Pending.
+
+## Geometry statistics
+
+Pending.
+
+## Hypothesis tests
+
+Pending.
+
+## Pipeline test
+
+Pending. Mandatory, and for a spread-front estimator it must include both a synthetic
+travelling wave of known speed and direction, which the estimator must recover, and a
+synthetic simultaneous eruption, which the estimator must not report as a wave.
+
+# Results
+
+## Pipeline test
+
+```{r}
+#| label: tbl-ptest
+#| echo: true
+#| tbl-cap: "Synthetic pipeline test. Pre-registered shell; reads pending until the test has run."
+if (is.null(ptest)) {
+  ptest <- data.frame(Scenario = c("planted travelling wave",
+                                   "simultaneous eruption",
+                                   "spatial noise"),
+                      Truth = "pending", Recovered = "pending",
+                      Verdict = "pending", check.names = FALSE)
+}
+fmt_tbl(ptest)
+```
+
+## Epicentres
+
+```{r}
+#| label: tbl-epicentres
+#| echo: true
+#| tbl-cap: "Outbreak epicentres: location, first year of detected damage, and the rule under which each was identified. Pre-registered shell; reads pending until outcomes are computed."
+if (is.null(epi_tbl)) {
+  epi_tbl <- data.frame(Epicentre = "pending", Easting = "pending",
+                        Northing = "pending", `First year` = "pending",
+                        Rule = "pending", check.names = FALSE)
+}
+fmt_tbl(epi_tbl)
+```
+
+## Spread fronts
+
+```{r}
+#| label: tbl-fronts
+#| echo: true
+#| tbl-cap: "Spread-front speed and direction per epicentre, with the interval method and the number of resampling draws fixed at pre-registration. Pre-registered shell; reads pending until outcomes are computed."
+if (is.null(front_summ)) {
+  front_summ <- data.frame(Epicentre = "pending",
+                           `Speed (km/yr)` = "pending",
+                           `Interval` = "pending",
+                           `Direction (deg)` = "pending",
+                           check.names = FALSE)
+}
+fmt_tbl(front_summ)
+```
+
+## Patch geometry
+
+```{r}
+#| label: tbl-geometry
+#| echo: true
+#| tbl-cap: "Geometry of the annual affected area: area, edge length, shape index and orientation. Pre-registered shell; reads pending until outcomes are computed."
+if (is.null(geom_tbl)) {
+  geom_tbl <- data.frame(Year = "pending", `Area (km2)` = "pending",
+                         `Edge (km)` = "pending", `Shape index` = "pending",
+                         check.names = FALSE)
+}
+fmt_tbl(geom_tbl)
+```
+
+## Spatial autocorrelation
+
+```{r}
+#| label: tbl-autocorrelation
+#| echo: true
+#| tbl-cap: "Spatial autocorrelation of annual damage over distance, with the lag structure and the significance procedure fixed at pre-registration. Pre-registered shell; reads pending until outcomes are computed."
+if (is.null(acorr_tbl)) {
+  acorr_tbl <- data.frame(`Lag (km)` = "pending", Statistic = "pending",
+                          p = "pending", check.names = FALSE)
+}
+fmt_tbl(acorr_tbl)
+```
+
+## Hypothesis tests
+
+```{r}
+#| label: tbl-tests
+#| echo: true
+#| tbl-cap: "Hypothesis tests under the pre-stated rules. Pre-registered shell; reads pending until outcomes are computed. The confirmatory family and its multiplicity correction are fixed at pre-registration."
+if (is.null(hyp_tests)) {
+  hyp_tests <- data.frame(Hypothesis = "pending", Estimate = "pending",
+                          p = "pending", `p (Holm)` = "pending",
+                          Verdict = "pending", check.names = FALSE)
+}
+fmt_tbl(hyp_tests)
+```
+
+# Discussion and conclusions
+
+Pending. Written as branches before the numbers exist, one branch per possible verdict, so
+that the reading of each outcome is fixed in advance, exactly as in Study 1.
+
+## Limitations
+
+Pending.
+
+## Conclusion
+
+Pending.
+
+# Data availability
+
+Pending. All data are expected to be public: Landsat from USGS, the survey polygon archive
+and the region boundaries under the Open Government Licence - British Columbia. Every
+licence is read from its source on the retrieval date and recorded in the input manifest
+before it is stated here.
+
+# Analysis pipeline
+
+Empty. Every chunk in this section is guarded on its own output, so a render executes none
+of them, and each is wrapped in `local()` so that a pipeline object cannot replace one the
+document is using. Chunks are labelled `pipe-*` and written out to `05.scripts/` by the
+`pipe-purl` chunk below. No pipeline chunk is written until the pre-registration is frozen.
+
+```{r}
+#| label: pipe-purl
+#| echo: true
+#| output: false
+# Writes the Analysis pipeline chunks out to 05.scripts/ so that long jobs can
+# be run from a terminal without rendering the whole document. Files carry a
+# do-not-edit header; edits made there are lost on the next regeneration.
+local({
+  src <- knitr::current_input()
+  if (is.null(src) || !file.exists(src)) return(invisible(NULL))
+  txt <- readLines(src)
+  starts <- grep("^```\\{r\\}", txt)
+  labs <- vapply(starts, function(i) {
+    j <- i + which(grepl("^#\\| label:", txt[(i + 1):min(i + 6, length(txt))]))[1]
+    if (is.na(j)) "" else sub(".*label:\\s*", "", txt[j])
+  }, "")
+  keep <- grepl("^pipe-", labs) & labs != "pipe-purl"
+  for (k in which(keep)) {
+    i <- starts[k]
+    e <- i + which(txt[(i + 1):length(txt)] == "```")[1]
+    body <- txt[(i + 1):(e - 1)]
+    body <- body[!grepl("^#\\|", body)]
+    f <- file.path(root, "05.scripts", paste0(labs[k], ".R"))
+    writeLines(c("# GENERATED FILE. Do not edit.",
+                 "# Written from 01.manuscript/manuscript.qmd by the pipe-purl chunk.",
+                 "# Edit the chunk in the manuscript and regenerate; edits here are lost.",
+                 "# Run from the repository root.", "", body), f)
+  }
+})
+```
+
+# References
+
+::: {#refs}
+:::

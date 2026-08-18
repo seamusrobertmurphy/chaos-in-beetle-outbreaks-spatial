@@ -1,0 +1,48 @@
+# ------------------------------------------------------------------- planning
+# Working documents that stay on the machine that made them.
+/docs/
+/05.tasks/
+INDEX.md
+
+# ------------------------------------------------------------ large raw inputs
+# Third-party archives, imagery and point clouds live on the external drive and
+# are reproducible from the scripts. Small derived tables the manuscript cites
+# are committed, because the paper reads them at render time.
+02.inputs/**
+!02.inputs/README.md
+!02.inputs/derived/
+!02.inputs/derived/*.csv
+!02.inputs/derived/*.geojson
+02.inputs/derived/*.gpkg
+02.inputs/derived/*.tif
+02.inputs/lidar/
+*.laz
+*.las
+*.lax
+*.zip
+*.gdb/
+
+# --------------------------------------------------------------------- outputs
+# Rendered sidecar directories, not the rendered documents themselves.
+01.manuscript/*_files/
+01.manuscript/*_cache/
+_book/
+_site/
+.quarto/
+
+# ---------------------------------------------------------------- environments
+renv/library/
+renv/staging/
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# ------------------------------------------------------------------- os cruft
+.DS_Store
+._*
+Thumbs.db
